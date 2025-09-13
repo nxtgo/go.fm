@@ -3,11 +3,13 @@ package whoknows
 import (
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
 	"go.fm/constants"
+	lfm "go.fm/lastfm/v2"
 	"go.fm/types/cmd"
 )
 
@@ -42,16 +44,15 @@ func (Command) Data() discord.ApplicationCommandCreate {
 
 func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.CommandContext) {
 	reply := ctx.Reply(e)
-
 	if err := reply.Defer(); err != nil {
 		_ = ctx.Error(e, constants.ErrorAcknowledgeCommand)
 		return
 	}
 
-	var img string
 	tType := e.SlashCommandInteractionData().String("type")
 	name, defined := e.SlashCommandInteractionData().OptString("name")
 
+	var img string
 	if !defined {
 		currentUser, err := ctx.Database.GetUser(ctx.Context, e.Member().User.ID.String())
 		if err != nil {
@@ -59,26 +60,26 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 			return
 		}
 
-		tracks, err := ctx.LastFM.GetRecentTracks(currentUser, 1)
-		if err != nil || len(tracks.RecentTracks.Track) == 0 || tracks.RecentTracks.Track[0].Attr.Nowplaying != "true" {
+		tracks, err := ctx.LastFM.User.GetRecentTracks(lfm.P{"user": currentUser, "limit": 1})
+		if err != nil || len(tracks.Tracks) == 0 || tracks.Tracks[0].NowPlaying != "true" {
 			_ = ctx.Error(e, constants.ErrorFetchCurrentTrack)
 			return
 		}
 
-		current := tracks.RecentTracks.Track[0]
-		img = current.Image[len(current.Image)-1].Text
+		current := tracks.Tracks[0]
+		img = current.Images[len(current.Images)-1].Url
 
 		switch tType {
 		case "artist":
-			name = current.Artist.Text
+			name = current.Artist.Name
 		case "track":
 			name = current.Name
 		case "album":
-			name = current.Album.Text
+			name = current.Album.Name
 		}
 	}
 
-	users, err := ctx.LastFM.GetUsersByGuild(ctx.Context, e, ctx.Database)
+	users, err := ctx.LastFM.User.GetUsersByGuild(ctx.Context, e, ctx.Database)
 	if err != nil {
 		_ = ctx.Error(e, constants.ErrorUnexpected)
 		return
@@ -90,19 +91,41 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 		PlayCount int
 	}
 
-	results := make([]result, 0)
-	for id, username := range users {
-		count, err := ctx.LastFM.GetUserPlays(username, tType, name, 1000)
-		if err != nil || count == 0 {
-			continue
-		}
+	var (
+		results []result
+		mu      sync.Mutex
+		wg      sync.WaitGroup
+		sem     = make(chan struct{}, 10)
+	)
 
-		results = append(results, result{
-			UserID:    id.String(),
-			Username:  username,
-			PlayCount: count,
+	for id, username := range users {
+		idCopy, usernameCopy := id.String(), username
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			count, err := ctx.LastFM.User.GetPlays(lfm.P{
+				"user":  usernameCopy,
+				"name":  name,
+				"type":  tType,
+				"limit": 1000,
+			})
+			if err != nil || count == 0 {
+				return
+			}
+
+			mu.Lock()
+			results = append(results, result{
+				UserID:    idCopy,
+				Username:  usernameCopy,
+				PlayCount: count,
+			})
+			mu.Unlock()
 		})
 	}
+
+	wg.Wait()
+	close(sem)
 
 	if len(results) == 0 {
 		_ = ctx.Error(e, constants.ErrorNoListeners)
@@ -118,12 +141,15 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 		if i >= 10 {
 			break
 		}
-		list += fmt.Sprintf("%d. [%s](<https://www.last.fm/user/%s>) (<@%s>) — %d plays\n", i+1, r.Username, r.Username, r.UserID, r.PlayCount)
+		list += fmt.Sprintf("%d. [%s](<https://www.last.fm/user/%s>) (<@%s>) — %d plays\n",
+			i+1, r.Username, r.Username, r.UserID, r.PlayCount)
 	}
 
 	embed := ctx.QuickEmbed(name, list)
 	embed.Author = &discord.EmbedAuthor{Name: "who listened more to..."}
-	embed.Thumbnail = &discord.EmbedResource{URL: img}
+	if img != "" {
+		embed.Thumbnail = &discord.EmbedResource{URL: img}
+	}
 
 	_ = reply.Embed(embed).Edit()
 }

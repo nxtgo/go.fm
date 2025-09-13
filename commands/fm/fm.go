@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"go.fm/constants"
+	lfm "go.fm/lastfm/v2"
 	"go.fm/types/cmd"
 )
 
@@ -40,35 +41,35 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 		return
 	}
 
-	data, err := ctx.LastFM.GetRecentTracks(user, 1)
+	data, err := ctx.LastFM.User.GetRecentTracks(lfm.P{"user": user, "limit": 1})
 	if err != nil {
 		_ = ctx.Error(e, constants.ErrorFetchCurrentTrack)
 		return
 	}
 
-	if len(data.RecentTracks.Track) == 0 {
+	if len(data.Tracks) == 0 {
 		_ = ctx.Error(e, constants.ErrorNoTracks)
 		return
 	}
 
-	track := data.RecentTracks.Track[0]
-	if track.Attr.Nowplaying != "true" {
+	track := data.Tracks[0]
+	if track.NowPlaying != "true" {
 		_ = ctx.Error(e, constants.ErrorNotPlaying)
 		return
 	}
 
 	embed := ctx.QuickEmbed(
 		track.Name,
-		fmt.Sprintf("by **%s**\n-# *at %s*", track.Artist.Text, track.Album.Text),
+		fmt.Sprintf("by **%s**\n-# *at %s*", track.Artist.Name, track.Album.Name),
 	)
 	embed.Author = &discord.EmbedAuthor{
 		Name: fmt.Sprintf("%s's current track", user),
 		URL:  fmt.Sprintf("https://www.last.fm/user/%s", user),
 	}
-	embed.URL = track.URL
-	if len(track.Image) > 0 {
+	embed.URL = track.Url
+	if len(track.Images) > 0 {
 		embed.Thumbnail = &discord.EmbedResource{
-			URL: track.Image[len(track.Image)-1].Text,
+			URL: track.Images[len(track.Images)-1].Url,
 		}
 	}
 

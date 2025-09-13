@@ -11,6 +11,7 @@ import (
 
 	"go.fm/constants"
 	"go.fm/db"
+	lfm "go.fm/lastfm/v2"
 	"go.fm/logger"
 	"go.fm/types/cmd"
 )
@@ -46,7 +47,7 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 	username := e.SlashCommandInteractionData().String("username")
 	discordID := e.User().ID.String()
 
-	_, err := ctx.LastFM.GetUserInfo(username)
+	_, err := ctx.LastFM.User.GetInfo(lfm.P{"user": username})
 	if err != nil {
 		_ = ctx.Error(e, constants.ErrorUserNotFound)
 		return

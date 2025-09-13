@@ -9,9 +9,9 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
 
-	"go.fm/cache"
+	"go.fm/cache/v2"
 	"go.fm/db"
-	"go.fm/lastfm"
+	lfm "go.fm/lastfm/v2"
 )
 
 var UserOption = discord.ApplicationCommandOptionString{
@@ -21,11 +21,11 @@ var UserOption = discord.ApplicationCommandOptionString{
 }
 
 type CommandContext struct {
-	LastFM   *lastfm.Client
+	LastFM   *lfm.LastFMApi
 	Database *db.Queries
 	Context  context.Context
 	Start    time.Time
-	Cache    *cache.LastFMCache
+	Cache    *cache.Cache
 }
 
 func (ctx *CommandContext) GetUser(

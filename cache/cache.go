@@ -9,6 +9,9 @@ import (
 	"go.fm/types/lastfm"
 )
 
+// i think i gotta rewrite ts again :wilted_rose:
+// cache isn't last.fm enough.
+
 type LastFMCache struct {
 	user       *gce.Cache[string, *lastfm.UserInfoResponse]
 	track      *gce.Cache[string, *lastfm.TrackInfoResponse]

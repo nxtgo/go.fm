@@ -57,8 +57,7 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 			"  - branch: %s\n"+
 			"  - commit: %s\n"+
 			"  - message: %s\n"+
-			"```\n"+
-			"**cache stats:**\n%s",
+			"```",
 		lastFMUsers,
 		runtime.NumGoroutine(),
 		float64(m.Alloc)/1024/1024,
@@ -68,7 +67,6 @@ func (Command) Handle(e *events.ApplicationCommandInteractionCreate, ctx cmd.Com
 		branch,
 		commit,
 		message,
-		ctx.LastFM.CacheStats(),
 	)
 
 	reply.Content(stats).Edit()
