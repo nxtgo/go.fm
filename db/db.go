@@ -27,17 +27,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteUserStmt, err = db.PrepareContext(ctx, deleteUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteUser: %w", err)
 	}
-	if q.getUserStmt, err = db.PrepareContext(ctx, getUser); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUser: %w", err)
+	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
 	}
-	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
-	}
-	if q.getUserCountStmt, err = db.PrepareContext(ctx, getUserCount); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserCount: %w", err)
-	}
-	if q.listUsersStmt, err = db.PrepareContext(ctx, listUsers); err != nil {
-		return nil, fmt.Errorf("error preparing query ListUsers: %w", err)
+	if q.getUserByLastFMStmt, err = db.PrepareContext(ctx, getUserByLastFM); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserByLastFM: %w", err)
 	}
 	if q.upsertUserStmt, err = db.PrepareContext(ctx, upsertUser); err != nil {
 		return nil, fmt.Errorf("error preparing query UpsertUser: %w", err)
@@ -52,24 +46,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteUserStmt: %w", cerr)
 		}
 	}
-	if q.getUserStmt != nil {
-		if cerr := q.getUserStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserStmt: %w", cerr)
+	if q.getUserByIDStmt != nil {
+		if cerr := q.getUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
 		}
 	}
-	if q.getUserByUsernameStmt != nil {
-		if cerr := q.getUserByUsernameStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
-		}
-	}
-	if q.getUserCountStmt != nil {
-		if cerr := q.getUserCountStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserCountStmt: %w", cerr)
-		}
-	}
-	if q.listUsersStmt != nil {
-		if cerr := q.listUsersStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing listUsersStmt: %w", cerr)
+	if q.getUserByLastFMStmt != nil {
+		if cerr := q.getUserByLastFMStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserByLastFMStmt: %w", cerr)
 		}
 	}
 	if q.upsertUserStmt != nil {
@@ -114,25 +98,21 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                    DBTX
-	tx                    *sql.Tx
-	deleteUserStmt        *sql.Stmt
-	getUserStmt           *sql.Stmt
-	getUserByUsernameStmt *sql.Stmt
-	getUserCountStmt      *sql.Stmt
-	listUsersStmt         *sql.Stmt
-	upsertUserStmt        *sql.Stmt
+	db                  DBTX
+	tx                  *sql.Tx
+	deleteUserStmt      *sql.Stmt
+	getUserByIDStmt     *sql.Stmt
+	getUserByLastFMStmt *sql.Stmt
+	upsertUserStmt      *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                    tx,
-		tx:                    tx,
-		deleteUserStmt:        q.deleteUserStmt,
-		getUserStmt:           q.getUserStmt,
-		getUserByUsernameStmt: q.getUserByUsernameStmt,
-		getUserCountStmt:      q.getUserCountStmt,
-		listUsersStmt:         q.listUsersStmt,
-		upsertUserStmt:        q.upsertUserStmt,
+		db:                  tx,
+		tx:                  tx,
+		deleteUserStmt:      q.deleteUserStmt,
+		getUserByIDStmt:     q.getUserByIDStmt,
+		getUserByLastFMStmt: q.getUserByLastFMStmt,
+		upsertUserStmt:      q.upsertUserStmt,
 	}
 }

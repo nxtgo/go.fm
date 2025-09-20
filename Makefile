@@ -1,3 +1,8 @@
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 module := go.fm
 bin := gofm
 pkg := ./cmd/bot

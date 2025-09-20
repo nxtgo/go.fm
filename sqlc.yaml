@@ -1,14 +1,14 @@
 version: "2"
+
 sql:
   - engine: "sqlite"
-    queries: "db/sql/queries.sql"
     schema: "db/sql/schema.sql"
+    queries: "db/sql/queries.sql"
     database:
-      uri: "file:database.db"
+      uri: "file:database.db?_foreign_keys=on"
     gen:
       go:
         package: "db"
         out: "db"
-        emit_json_tags: true
         emit_prepared_queries: true
-
+        emit_interface: false

@@ -4,7 +4,12 @@
 
 package db
 
+import (
+	"time"
+)
+
 type User struct {
-	DiscordID      string `json:"discord_id"`
-	LastfmUsername string `json:"lastfm_username"`
+	UserID         string
+	LastfmUsername string
+	CreatedAt      *time.Time
 }

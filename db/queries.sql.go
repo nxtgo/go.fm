@@ -11,93 +11,52 @@ import (
 
 const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
-WHERE discord_id = ?
+WHERE user_id = ?1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, discordID string) error {
-	_, err := q.exec(ctx, q.deleteUserStmt, deleteUser, discordID)
+func (q *Queries) DeleteUser(ctx context.Context, userID string) error {
+	_, err := q.exec(ctx, q.deleteUserStmt, deleteUser, userID)
 	return err
 }
 
-const getUser = `-- name: GetUser :one
-SELECT lastfm_username
+const getUserByID = `-- name: GetUserByID :one
+SELECT user_id, lastfm_username, created_at
 FROM users
-WHERE discord_id = ?
+WHERE user_id = ?1
 `
 
-func (q *Queries) GetUser(ctx context.Context, discordID string) (string, error) {
-	row := q.queryRow(ctx, q.getUserStmt, getUser, discordID)
-	var lastfm_username string
-	err := row.Scan(&lastfm_username)
-	return lastfm_username, err
-}
-
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT discord_id, lastfm_username
-FROM users
-WHERE lastfm_username = ?
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, lastfmUsername string) (User, error) {
-	row := q.queryRow(ctx, q.getUserByUsernameStmt, getUserByUsername, lastfmUsername)
+func (q *Queries) GetUserByID(ctx context.Context, userID string) (User, error) {
+	row := q.queryRow(ctx, q.getUserByIDStmt, getUserByID, userID)
 	var i User
-	err := row.Scan(&i.DiscordID, &i.LastfmUsername)
+	err := row.Scan(&i.UserID, &i.LastfmUsername, &i.CreatedAt)
 	return i, err
 }
 
-const getUserCount = `-- name: GetUserCount :one
-SELECT COUNT(*) AS count
+const getUserByLastFM = `-- name: GetUserByLastFM :one
+SELECT user_id, lastfm_username, created_at
 FROM users
+WHERE lastfm_username = ?1
 `
 
-func (q *Queries) GetUserCount(ctx context.Context) (int64, error) {
-	row := q.queryRow(ctx, q.getUserCountStmt, getUserCount)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const listUsers = `-- name: ListUsers :many
-SELECT discord_id, lastfm_username
-FROM users
-`
-
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.query(ctx, q.listUsersStmt, listUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []User
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(&i.DiscordID, &i.LastfmUsername); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetUserByLastFM(ctx context.Context, lastfmUsername string) (User, error) {
+	row := q.queryRow(ctx, q.getUserByLastFMStmt, getUserByLastFM, lastfmUsername)
+	var i User
+	err := row.Scan(&i.UserID, &i.LastfmUsername, &i.CreatedAt)
+	return i, err
 }
 
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (discord_id, lastfm_username)
-VALUES (?, ?)
-ON CONFLICT(discord_id) DO UPDATE
-SET lastfm_username = excluded.lastfm_username
+INSERT INTO users (user_id, lastfm_username)
+VALUES (?1, ?2)
+ON CONFLICT(user_id) DO UPDATE SET lastfm_username = excluded.lastfm_username
 `
 
 type UpsertUserParams struct {
-	DiscordID      string `json:"discord_id"`
-	LastfmUsername string `json:"lastfm_username"`
+	UserID         string
+	LastfmUsername string
 }
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
-	_, err := q.exec(ctx, q.upsertUserStmt, upsertUser, arg.DiscordID, arg.LastfmUsername)
+	_, err := q.exec(ctx, q.upsertUserStmt, upsertUser, arg.UserID, arg.LastfmUsername)
 	return err
 }
